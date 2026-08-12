@@ -74,6 +74,11 @@ h1 { font-size:24px; font-weight:800; letter-spacing:.3px; }
 #result .status.notfound { color:var(--red); }
 #result .status.wait { color:var(--muted); }
 #result .name { font-size:26px; font-weight:800; line-height:1.6; margin:6px 0 14px; }
+#result .name.copyable { cursor:pointer; border-radius:12px; padding:2px 10px; transition:background .2s; user-select:all; -webkit-user-select:all; }
+#result .name.copyable:hover { background:#0ea5e914; }
+#result .name.copyable .hint { font-size:12px; color:var(--muted); font-weight:400; margin-right:8px; }
+#result .name.copyable.copied { background:#16a34a1f; color:var(--green); }
+#result .name.copyable.copied .hint { color:var(--green); }
 #result .code {
   display:inline-block; font-size:22px; font-weight:700; color:var(--accent);
   background:#0ea5e914; border:1px solid #0ea5e940; border-radius:12px;
@@ -179,11 +184,11 @@ function beep(type){
   }catch(e){}
 }
 
-function copyText(txt){
+function copyText(txt, label){
   function done(){
     var msg = document.createElement('div');
     msg.className = 'copied-msg';
-    msg.textContent = '✓ تم نسخ الكود';
+    msg.textContent = label ? ('✓ تم نسخ ' + label) : '✓ تم النسخ';
     resultEl.appendChild(msg);
     setTimeout(function(){ if (msg.parentNode) msg.parentNode.removeChild(msg); }, 1500);
   }
@@ -206,13 +211,20 @@ function showFound(r){
   st.className = 'status found'; st.textContent = '✓ تم العثور على الصنف';
   resultEl.appendChild(st);
   var nameEl = document.createElement('div');
-  nameEl.className = 'name'; nameEl.textContent = r[2];
+  nameEl.className = 'name copyable';
+  nameEl.innerHTML = r[2] + '<span class="hint">اضغط للنسخ</span>';
+  nameEl.addEventListener('click', function(){
+    copyText(r[2], 'اسم الصنف');
+    var old = nameEl.className;
+    nameEl.classList.add('copied');
+    setTimeout(function(){ nameEl.className = old; }, 900);
+  });
   resultEl.appendChild(nameEl);
   var codeEl = document.createElement('div');
   codeEl.className = 'code copyable';
   codeEl.innerHTML = r[1] + '<span class="hint">اضغط للنسخ</span>';
   codeEl.addEventListener('click', function(){
-    copyText(r[1]);
+    copyText(r[1], 'الكود');
     var old = codeEl.className;
     codeEl.classList.add('copied');
     setTimeout(function(){ codeEl.className = old; }, 900);

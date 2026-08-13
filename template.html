@@ -329,6 +329,8 @@ scanEl.addEventListener('input', function(){
   }
 });
 
+searchEl.addEventListener('focus', function(){ searchEl.select(); });
+
 searchEl.addEventListener('input', function(){
   var q = searchEl.value.trim();
   resultsEl.innerHTML = '';

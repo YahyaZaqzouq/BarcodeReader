@@ -130,9 +130,10 @@ h1 { font-size:24px; font-weight:800; letter-spacing:.3px; }
 .cam-btn.stop { background:linear-gradient(135deg, #f87171, #dc2626); box-shadow:0 6px 20px #f8717155; }
 .cam-btn.stop:hover { box-shadow:0 8px 26px #f8717177; }
 .cam-btn svg { width:18px; height:18px; fill:#fff; }
-#cameraBox { margin-top:14px; border-radius:14px; overflow:hidden; background:#000; }
-#cameraReader video { border-radius:14px; }
-.cam-note { text-align:center; font-size:12px; color:var(--muted); margin-top:8px; padding-bottom:4px; }
+#cameraBox { margin-top:14px; border-radius:14px; overflow:hidden; background:#000; position:relative; }
+#cameraReader { width:100%; min-height:240px; display:flex; align-items:center; justify-content:center; background:#000; }
+#cameraReader video { width:100%; height:auto; display:block; border-radius:14px; object-fit:cover; }
+.cam-note { text-align:center; font-size:12px; color:var(--muted); margin-top:8px; padding-bottom:4px; position:absolute; bottom:4px; left:0; right:0; z-index:3; text-shadow:0 1px 3px rgba(0,0,0,.8); }
 
 /* footer */
 #stats { text-align:center; color:var(--muted); font-size:12px; margin-top:4px; opacity:.8; }
@@ -397,43 +398,73 @@ var cameraBox = document.getElementById('cameraBox');
 var html5Qr = null;
 var scanning = false;
 
+var camNote = document.querySelector('.cam-note');
+function camMsg(t){
+  if (camNote) camNote.textContent = t;
+}
+
+function loadQrLib(cb){
+  if (typeof Html5Qrcode !== 'undefined'){ cb(true); return; }
+  var sources = [
+    'https://cdn.jsdelivr.net/npm/html5-qrcode@2.3.8/html5-qrcode.min.js',
+    'https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js',
+    'https://cdnjs.cloudflare.com/ajax/libs/html5-qrcode/2.3.8/html5-qrcode.min.js'
+  ];
+  var i = 0;
+  (function tryNext(){
+    if (typeof Html5Qrcode !== 'undefined'){ cb(true); return; }
+    if (i >= sources.length){ cb(false); return; }
+    var s = document.createElement('script');
+    s.src = sources[i++];
+    s.onload = function(){ cb(true); };
+    s.onerror = function(){ tryNext(); };
+    document.body.appendChild(s);
+  })();
+}
+
 function startCamera(){
-  if (typeof Html5Qrcode === 'undefined'){
-    alert('مكتبة الكاميرا لم تُحمَّل — تأكد من الاتصال بالإنترنت ثم أعد فتح الصفحة.');
-    return;
-  }
   if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia){
-    alert('متصفحك لا يدعم الكاميرا. استخدم متصفحاً حديثاً مثل كروم أو سفاري.');
+    camMsg('متصفحك لا يدعم الكاميرا. استخدم متصفحاً حديثاً (كروم/سفاري/إيدج).');
     return;
   }
-  try{
-    html5Qr = new Html5Qrcode('cameraReader');
-    html5Qr.start(
-      { facingMode: 'environment' },
-      {
-        fps: 10,
-        qrbox: function(vw, vh){
-          var s = Math.min(vw, vh);
-          return { width: Math.round(s * 0.7), height: Math.round(s * 0.5) };
-        }
-      },
-      function(decodedText){
-        lookup(decodedText);
-        stopCamera();
-      },
-      function(errMessage){ /* تجاهل أخطاء الإطارات المتكررة */ }
-    ).then(function(){
-      scanning = true;
-      camBtn.style.display = 'none';
-      camStop.style.display = '';
-      cameraBox.style.display = 'block';
-      scanEl.blur();
-    }).catch(function(err){
-      alert('تعذّر تشغيل الكاميرا: ' + err + '\\nتأكد من منح إذن الكاميرا للموقع.');
-    });
-  }catch(e){
-    alert('خطأ أثناء فتح الكاميرا: ' + e);
-  }
+  camBtn.style.display = 'none';
+  camStop.style.display = '';
+  cameraBox.style.display = 'block';
+  camMsg('جارٍ تحميل مكتبة الكاميرا...');
+  scanEl.blur();
+  loadQrLib(function(ok){
+    if (!ok){
+      camMsg('تعذّر تحميل مكتبة الكاميرا — تأكد من الاتصال بالإنترنت.');
+      return;
+    }
+    try{
+      html5Qr = new Html5Qrcode('cameraReader');
+      camMsg('جارٍ فتح الكاميرا...');
+      html5Qr.start(
+        { facingMode: 'environment' },
+        {
+          fps: 10,
+          aspectRatio: 1.3333,
+          qrbox: function(vw, vh){
+            var s = Math.min(vw, vh);
+            return { width: Math.round(s * 0.75), height: Math.round(s * 0.45) };
+          }
+        },
+        function(decodedText){
+          lookup(decodedText);
+          stopCamera();
+        },
+        function(errMessage){ /* تجاهل أخطاء الإطارات المتكررة */ }
+      ).then(function(){
+        scanning = true;
+        camMsg('وجّه الكاميرا نحو الباركود');
+      }).catch(function(err){
+        camMsg('تعذّر فتح الكاميرا: ' + err + ' — تأكد من منح إذن الكاميرا للموقع.');
+      });
+    }catch(e){
+      camMsg('خطأ أثناء فتح الكاميرا: ' + e);
+    }
+  });
 }
 
 function stopCamera(){

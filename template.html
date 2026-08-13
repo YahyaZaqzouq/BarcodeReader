@@ -1,0 +1,365 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>نظام الباركود - فحص الأصناف</title>
+<style>
+:root {
+  --bg1:#eaf2fb; --bg2:#d7e7fb; --card:#ffffffcc; --card-solid:#ffffff;
+  --border:#b9cce8; --text:#1a2740; --muted:#5a6d94;
+  --accent:#0ea5e9; --accent2:#6366f1; --green:#16a34a; --red:#dc2626;
+  --gold:#b45309;
+}
+* { margin:0; padding:0; box-sizing:border-box; font-family:'Segoe UI', Tahoma, 'Arial', sans-serif; }
+body {
+  min-height:100vh; color:var(--text);
+  background: radial-gradient(1100px 550px at 85% -10%, #93c5fd66, transparent 60%),
+              radial-gradient(900px 500px at -10% 110%, #a5b4fc66, transparent 55%),
+              linear-gradient(160deg, var(--bg1), var(--bg2));
+  padding:18px 14px 30px;
+}
+.container { max-width:860px; margin:0 auto; }
+
+/* header */
+.header { text-align:center; margin-bottom:20px; }
+.logo {
+  width:64px; height:64px; margin:0 auto 12px; border-radius:18px;
+  background:linear-gradient(135deg, var(--accent), var(--accent2));
+  display:flex; align-items:center; justify-content:center;
+  box-shadow:0 10px 30px #0ea5e944;
+}
+.logo svg { width:34px; height:34px; fill:#fff; }
+h1 { font-size:24px; font-weight:800; letter-spacing:.3px; }
+.sub { color:var(--muted); font-size:13px; margin-top:6px; }
+.sub.owner { font-size:14px; font-weight:700; color:var(--accent2); margin-top:4px; }
+.sub b { color:var(--gold); font-weight:600; }
+
+/* cards */
+.card {
+  background:var(--card); border:1px solid var(--border);
+  border-radius:20px; backdrop-filter:blur(12px); -webkit-backdrop-filter:blur(12px);
+  box-shadow:0 8px 30px #1e3a8a22;
+  padding:18px; margin-bottom:16px;
+}
+.card-title {
+  font-size:13px; color:var(--muted); margin-bottom:10px;
+  display:flex; align-items:center; gap:7px; font-weight:600;
+}
+.card-title .dot { width:7px; height:7px; border-radius:50%; background:var(--accent); box-shadow:0 0 8px var(--accent); }
+
+/* scan box */
+.scan-field { position:relative; }
+.scan-line {
+  position:absolute; left:10px; right:10px; top:0; height:2px; z-index:2;
+  background:linear-gradient(90deg, transparent, var(--accent), transparent);
+  border-radius:2px; box-shadow:0 0 12px var(--accent);
+  animation:scan 2.2s linear infinite; opacity:.9; pointer-events:none;
+}
+@keyframes scan { 0%{top:4px} 50%{top:calc(100% - 6px)} 100%{top:4px} }
+#scanInput {
+  width:100%; padding:15px; font-size:21px; text-align:center; letter-spacing:3px;
+  direction:ltr; color:var(--text); background:#ffffffd9; border:2px solid var(--border);
+  border-radius:14px; outline:none; transition:border-color .2s, box-shadow .2s;
+}
+#scanInput::placeholder { color:#8ea3c6; letter-spacing:0; }
+#scanInput:focus { border-color:var(--accent); box-shadow:0 0 0 4px #0ea5e91f; }
+
+/* result */
+#result { min-height:200px; display:flex; flex-direction:column; justify-content:center; text-align:center; padding:24px 18px; position:relative; overflow:hidden; transition:border-color .3s, box-shadow .3s; }
+#result.found { border-color:#34d39944; box-shadow:0 0 40px #34d39915; }
+#result.notfound { border-color:#f8717144; box-shadow:0 0 40px #f8717115; }
+#result .status { font-size:14px; font-weight:700; margin-bottom:6px; letter-spacing:.4px; }
+#result .status.found { color:var(--green); }
+#result .status.notfound { color:var(--red); }
+#result .status.wait { color:var(--muted); }
+#result .name { font-size:26px; font-weight:800; line-height:1.6; margin:6px 0 14px; }
+#result .name.copyable { cursor:pointer; border-radius:12px; padding:2px 10px; transition:background .2s; user-select:all; -webkit-user-select:all; }
+#result .name.copyable:hover { background:#0ea5e914; }
+#result .name.copyable .hint { font-size:12px; color:var(--muted); font-weight:400; margin-right:8px; }
+#result .name.copyable.copied { background:#16a34a1f; color:var(--green); }
+#result .name.copyable.copied .hint { color:var(--green); }
+#result .code {
+  display:inline-block; font-size:22px; font-weight:700; color:var(--accent);
+  background:#0ea5e914; border:1px solid #0ea5e940; border-radius:12px;
+  padding:8px 22px; letter-spacing:1px;
+}
+#result .code.copyable { cursor:pointer; transition:background .2s, transform .15s; user-select:all; -webkit-user-select:all; }
+#result .code.copyable:hover { background:#0ea5e92b; transform:translateY(-1px); }
+#result .code.copyable .hint { font-size:11px; color:var(--muted); font-weight:400; margin-right:8px; }
+#result .code.copied { background:#16a34a; border-color:var(--green); color:#ffffff; }
+#result .code.copied .hint { color:#ffffff; }
+#result .bar { font-size:13px; color:var(--muted); margin-top:12px; direction:ltr; letter-spacing:1px; }
+#result .nofound-note { color:var(--red); font-size:22px; font-weight:800; margin-top:4px; }
+#result .copied-msg { display:inline-block; margin-top:12px; color:var(--green); font-size:13px; font-weight:600; background:#34d39915; border:1px solid #34d39944; padding:6px 16px; border-radius:20px; }
+
+/* search */
+#searchInput {
+  width:100%; padding:13px 16px; font-size:16px; color:var(--text);
+  background:#ffffffd9; border:2px solid var(--border); border-radius:12px; outline:none;
+  transition:border-color .2s, box-shadow .2s;
+}
+#searchInput:focus { border-color:var(--accent); box-shadow:0 0 0 4px #0ea5e91f; }
+#searchResults { margin-top:12px; max-height:300px; overflow-y:auto; border-radius:12px; }
+.sr-item {
+  padding:11px 14px; border-radius:10px; margin-bottom:6px; cursor:pointer;
+  display:flex; justify-content:space-between; gap:10px; align-items:center;
+  background:#0ea5e908; border:1px solid #0ea5e90f; transition:background .15s, transform .1s;
+}
+.sr-item:hover { background:#0ea5e91c; transform:translateX(-3px); }
+.sr-item .n { font-size:14px; font-weight:600; flex:1; }
+.sr-item .meta { display:flex; flex-direction:column; align-items:flex-end; gap:2px; flex-shrink:0; }
+.sr-item .c { color:var(--accent); font-size:13px; font-weight:700; direction:ltr; }
+.sr-item .b { color:var(--muted); font-size:11px; direction:ltr; }
+#searchResults::-webkit-scrollbar { width:8px; }
+#searchResults::-webkit-scrollbar-thumb { background:#0ea5e933; border-radius:8px; }
+#searchResults::-webkit-scrollbar-track { background:transparent; }
+.no-result { padding:16px; color:var(--muted); text-align:center; font-size:14px; }
+
+/* footer */
+#stats { text-align:center; color:var(--muted); font-size:12px; margin-top:4px; opacity:.8; }
+#stats b { color:var(--accent); }
+</style>
+</head>
+<body>
+<div class="container">
+  <div class="header">
+    <div class="logo">
+      <svg viewBox="0 0 24 24"><path d="M4 6h2v12H4zm3 0h1v12H7zm3 0h1v12h-1zm3 0h3v12h-3zm5 0h1v12h-1zm2 0h1v12h-1z"/></svg>
+    </div>
+    <h1>نظام فحص الباركود</h1>
+    <div class="sub">مرّر الباركود وسيظهر الصنف فوراً</div>
+    <div class="sub owner">د.يحي زقزوق | صيدلية معاذ</div>
+  </div>
+
+  <div class="card">
+    <div class="card-title"><span class="dot"></span>منطقة المسح الضوئي</div>
+    <div class="scan-field">
+      <div class="scan-line"></div>
+      <input type="text" id="scanInput" autofocus autocomplete="off" spellcheck="false" placeholder="بإنتظار القراءة...">
+    </div>
+  </div>
+
+  <div class="card" id="result">
+    <div class="status wait">بإنتظار المسح</div>
+    <div class="name" style="color:var(--muted); font-weight:500; font-size:18px;">ضع المؤشر في مربع المسح ثم مرّر الباركود</div>
+  </div>
+
+  <div class="card">
+    <div class="card-title"><span class="dot"></span>بحث يدوي (كود / باركود / اسم الصنف)</div>
+    <input type="text" id="searchInput" autocomplete="off" placeholder="اكتب كود أو باركود أو اسم الصنف...">
+    <div id="searchResults"></div>
+  </div>
+
+  <div id="stats"></div>
+</div>
+
+<script>
+var DATA = __DATA__;
+
+var byBarcode = new Map();
+var byBarcodeTrim = new Map();
+var byCode = new Map();
+var norm = function(s){ return String(s==null?'':s).replace(/\D/g,''); };
+for (var i=0;i<DATA.length;i++){
+  var r = DATA[i];
+  var b = norm(r[0]);
+  if (b){
+    if (!byBarcode.has(b)) byBarcode.set(b, r);
+    var bt = b.replace(/^0+/, '');
+    if (bt && !byBarcodeTrim.has(bt)) byBarcodeTrim.set(bt, r);
+  }
+  if (r[1] && !byCode.has(r[1])) byCode.set(r[1], r);
+}
+
+var scanEl = document.getElementById('scanInput');
+var resultEl = document.getElementById('result');
+var searchEl = document.getElementById('searchInput');
+var resultsEl = document.getElementById('searchResults');
+
+function beep(type){
+  try{
+    var ctx = new (window.AudioContext||window.webkitAudioContext)();
+    var o = ctx.createOscillator(), g = ctx.createGain();
+    o.connect(g); g.connect(ctx.destination);
+    if (type==='ok'){ o.frequency.value=1200; g.gain.value=0.15; }
+    else { o.frequency.value=180; g.gain.value=0.2; }
+    o.start();
+    setTimeout(function(){ try{o.stop(); ctx.close();}catch(e){} }, 150);
+  }catch(e){}
+}
+
+function copyText(txt, label){
+  function done(){
+    var msg = document.createElement('div');
+    msg.className = 'copied-msg';
+    msg.textContent = label ? ('✓ تم نسخ ' + label) : '✓ تم النسخ';
+    resultEl.appendChild(msg);
+    setTimeout(function(){ if (msg.parentNode) msg.parentNode.removeChild(msg); }, 1500);
+  }
+  if (navigator.clipboard && navigator.clipboard.writeText){
+    navigator.clipboard.writeText(txt).then(done, function(){ legacyCopy(txt); done(); });
+  } else { legacyCopy(txt); done(); }
+  function legacyCopy(txt){
+    var ta = document.createElement('textarea');
+    ta.value = txt; ta.style.position='fixed'; ta.style.opacity='0';
+    document.body.appendChild(ta); ta.select();
+    try{ document.execCommand('copy'); }catch(e){}
+    document.body.removeChild(ta);
+  }
+}
+
+function showFound(r){
+  resultEl.className = 'card found';
+  resultEl.innerHTML = '';
+  var st = document.createElement('div');
+  st.className = 'status found'; st.textContent = '✓ تم العثور على الصنف';
+  resultEl.appendChild(st);
+  var nameEl = document.createElement('div');
+  nameEl.className = 'name copyable';
+  nameEl.innerHTML = r[2] + '<span class="hint">اضغط للنسخ</span>';
+  nameEl.addEventListener('click', function(){
+    copyText(r[2], 'اسم الصنف');
+    var old = nameEl.className;
+    nameEl.classList.add('copied');
+    setTimeout(function(){ nameEl.className = old; }, 900);
+  });
+  resultEl.appendChild(nameEl);
+  var codeEl = document.createElement('div');
+  codeEl.className = 'code copyable';
+  codeEl.innerHTML = r[1] + '<span class="hint">اضغط للنسخ</span>';
+  codeEl.addEventListener('click', function(){
+    copyText(r[1], 'الكود');
+    var old = codeEl.className;
+    codeEl.classList.add('copied');
+    setTimeout(function(){ codeEl.className = old; }, 900);
+  });
+  resultEl.appendChild(codeEl);
+  if (r[0]){
+    var barEl = document.createElement('div');
+    barEl.className = 'bar'; barEl.textContent = 'باركود: ' + r[0];
+    resultEl.appendChild(barEl);
+  }
+  beep('ok');
+}
+function showNotFound(bar){
+  resultEl.className = 'card notfound';
+  resultEl.innerHTML = '<div class="status notfound">✕ غير موجود</div>' +
+    '<div class="nofound-note">لا يوجد صنف مطابق لهذا الباركود</div>' +
+    '<div class="bar">' + bar + '</div>';
+  beep('err');
+}
+function showIdle(){
+  resultEl.className = 'card';
+  resultEl.innerHTML = '<div class="status wait">بإنتظار المسح</div>' +
+    '<div class="name" style="color:var(--muted); font-weight:500; font-size:18px;">ضع المؤشر في مربع المسح ثم مرّر الباركود</div>';
+}
+
+var scanTimer = null;
+function lookup(bar){
+  var b = norm(bar);
+  if (!b){ showIdle(); return; }
+  var r = byBarcode.get(b);
+  if (!r){
+    var bTrim = b.replace(/^0+/, '');
+    r = byBarcodeTrim.get(bTrim);
+  }
+  if (!r){
+    for (var pad = b.length; pad < 14; pad++){
+      r = byBarcode.get(b.replace(/^0+/, '').padStart(pad, '0'));
+      if (r) break;
+    }
+  }
+  if (!r){
+    for (var len = b.length; len >= 8; len--){
+      r = byBarcode.get(b.slice(0,len));
+      if (r) break;
+    }
+  }
+  if (r) showFound(r); else showNotFound(bar);
+}
+
+scanEl.addEventListener('keydown', function(e){
+  if (e.key === 'Enter'){
+    e.preventDefault();
+    var val = scanEl.value;
+    if (val) lookup(val);
+    scanEl.value = '';
+    scanEl.focus();
+  }
+});
+scanEl.addEventListener('input', function(){
+  var v = scanEl.value;
+  if (v.length >= 5 && v.length <= 30 && /^\d+$/.test(v)){
+    if (scanTimer) clearTimeout(scanTimer);
+    var vv = v;
+    scanTimer = setTimeout(function(){
+      if (scanEl.value === vv){ lookup(vv); scanEl.value=''; scanEl.focus(); }
+    }, 250);
+  }
+});
+
+searchEl.addEventListener('input', function(){
+  var q = searchEl.value.trim();
+  resultsEl.innerHTML = '';
+  if (!q) return;
+  var ql = q.toLowerCase();
+  var qn = norm(q);
+  var qc = byCode.get(q);
+  if (qc){
+    resultsEl.appendChild(buildItem(qc));
+    return;
+  }
+  var hasWild = q.indexOf('%') !== -1;
+  var parts = null;
+  if (hasWild){
+    parts = [];
+    var segs = q.split('%');
+    for (var p=0;p<segs.length;p++){
+      var t = segs[p].trim();
+      if (t) parts.push(t.toLowerCase());
+    }
+  }
+  var out = [];
+  for (var i=0;i<DATA.length;i++){
+    var r = DATA[i];
+    if (out.length >= 60) break;
+    var hits;
+    if (hasWild){
+      hits = true;
+      var nameLow = String(r[2]).toLowerCase();
+      for (var k=0;k<parts.length;k++){
+        if (nameLow.indexOf(parts[k]) === -1){ hits = false; break; }
+      }
+    } else {
+      hits = (norm(r[0]) && norm(r[0]).indexOf(qn) !== -1) ||
+             String(r[1]).toLowerCase().indexOf(ql) !== -1 ||
+             String(r[2]).toLowerCase().indexOf(ql) !== -1;
+    }
+    if (hits) out.push(r);
+  }
+  if (!out.length){
+    var no = document.createElement('div');
+    no.className = 'no-result';
+    no.textContent = 'لا توجد نتائج';
+    resultsEl.appendChild(no);
+    return;
+  }
+  for (var j=0;j<out.length;j++) resultsEl.appendChild(buildItem(out[j]));
+});
+function buildItem(it){
+  var d = document.createElement('div');
+  d.className = 'sr-item';
+  d.innerHTML = '<span class="n"></span><span class="meta"><span class="c"></span><span class="b"></span></span>';
+  d.querySelector('.n').textContent = it[2];
+  d.querySelector('.c').textContent = it[1];
+  d.querySelector('.b').textContent = it[0] ? it[0] : '—';
+  d.addEventListener('click', function(){ showFound(it); });
+  return d;
+}
+
+document.addEventListener('click', function(e){ if (e.target !== searchEl) scanEl.focus(); });
+document.getElementById('stats').innerHTML = 'عدد الأصناف: <b>' + DATA.length + '</b> &nbsp;|&nbsp; عدد الباركودات: <b>' + byBarcode.size + '</b>';
+</script>
+</body>
+</html>
